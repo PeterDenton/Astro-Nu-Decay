@@ -1,9 +1,14 @@
+#include <gsl/gsl_min.h>
+#include <gsl/gsl_errno.h>
+
 #include "IceCube.h"
 #include "Parameters.h"
 #include "SM.h"
 #include "Depletion.h"
 #include "Regeneration.h"
 #include "Power_Law_Fit.h"
+
+#define sq(x) ((x)*(x))
 
 // Track to cascade ratio
 double Rtc(decay_params dp, bool visible)
@@ -25,37 +30,37 @@ double Rtc(decay_params dp, bool visible)
 
 	// Calculate the six relevant probabilities
 	double Pee, Pem, Pet, Pme, Pmm, Pmt;
-	Pee = PSM(e, e, dp) + Pdep(e, e, dp) +
-			+ std::norm(U[e][1]) * std::norm(U[e][0]) * P21
-			+ std::norm(U[e][2]) * std::norm(U[e][0]) * P31
-			+ std::norm(U[e][2]) * std::norm(U[e][1]) * P32;
-	Pem = PSM(e, m, dp) + Pdep(e, m, dp) +
-			+ std::norm(U[e][1]) * std::norm(U[m][0]) * P21
-			+ std::norm(U[e][2]) * std::norm(U[m][0]) * P31
-			+ std::norm(U[e][2]) * std::norm(U[m][1]) * P32;
-	Pet = PSM(e, t, dp) + Pdep(e, t, dp) +
-			+ std::norm(U[e][1]) * std::norm(U[t][0]) * P21
-			+ std::norm(U[e][2]) * std::norm(U[t][0]) * P31
-			+ std::norm(U[e][2]) * std::norm(U[t][1]) * P32;
-	Pme = PSM(m, e, dp) + Pdep(m, e, dp) +
-			+ std::norm(U[m][1]) * std::norm(U[e][0]) * P21
-			+ std::norm(U[m][2]) * std::norm(U[e][0]) * P31
-			+ std::norm(U[m][2]) * std::norm(U[e][1]) * P32;
-	Pmm = PSM(m, m, dp) + Pdep(m, m, dp) +
-			+ std::norm(U[m][1]) * std::norm(U[m][0]) * P21
-			+ std::norm(U[m][2]) * std::norm(U[m][0]) * P31
-			+ std::norm(U[m][2]) * std::norm(U[m][1]) * P32;
-	Pmt = PSM(m, t, dp) + Pdep(m, t, dp) +
-			+ std::norm(U[m][1]) * std::norm(U[t][0]) * P21
-			+ std::norm(U[m][2]) * std::norm(U[t][0]) * P31
-			+ std::norm(U[m][2]) * std::norm(U[t][1]) * P32;
+	Pee = PSM(e, e, dp) + Pdep(e, e, dp)
+			+ Ue2sq * Ue1sq * P21
+			+ Ue3sq * Ue1sq * P31
+			+ Ue3sq * Ue2sq * P32;
+	Pem = PSM(e, m, dp) + Pdep(e, m, dp)
+			+ Ue2sq * Um1sq * P21
+			+ Ue3sq * Um1sq * P31
+			+ Ue3sq * Um2sq * P32;
+	Pet = PSM(e, t, dp) + Pdep(e, t, dp)
+			+ Ue2sq * Ut1sq * P21
+			+ Ue3sq * Ut1sq * P31
+			+ Ue3sq * Ut2sq * P32;
+	Pme = PSM(m, e, dp) + Pdep(m, e, dp)
+			+ Um2sq * Ue1sq * P21
+			+ Um3sq * Ue1sq * P31
+			+ Um3sq * Ue2sq * P32;
+	Pmm	= PSM(m, m, dp) + Pdep(m, m, dp)
+			+ Um2sq * Um1sq * P21
+			+ Um3sq * Um1sq * P31
+			+ Um3sq * Um2sq * P32;
+	Pmt = PSM(m, t, dp) + Pdep(m, t, dp)
+			+ Um2sq * Ut1sq * P21
+			+ Um3sq * Ut1sq * P31
+			+ Um3sq * Ut2sq * P32;
 
-    double Nt, Nc;
+	double Nt, Nc;
 	// Pion decay
 	Nt = Pem + 2 * Pmm;
 	Nc = Pee + 2 * Pme + Pet + 2 * Pmt;
 
-    return Nt / Nc;
+	return Nt / Nc;
 }
 
 // Calculate the spectral index at the Earth over the range 100 TeV to 1 PeV assuming pion decay sources
@@ -117,5 +122,102 @@ void IC_gamma(decay_params dp, bool visible, double &gamma_track, double &gamma_
 	double tmp;
 	Power_Law_Fit(Efs, Phi_tracks, n, 1e5, tmp, gamma_track);
 	Power_Law_Fit(Efs, Phi_cascades, n, 1e5, tmp, gamma_cascade);
+}
+
+struct chisq_helper_params {decay_params dp; bool visible, m1min;};
+double Chisq_helper(double m1, void *pp)
+{
+	chisq_helper_params p = *(chisq_helper_params*)pp;
+	decay_params dp = p.dp;
+	bool visible = p.visible;
+	bool m1min = p.m1min;
+
+	dp.m1 = m1;
+
+	double gamma_track, gamma_cascade, chisq;
+
+	// Get spectral indices from decay
+	IC_gamma(dp, visible, gamma_track, gamma_cascade);
+
+	chisq = 0;
+
+	// 1607.08006
+	chisq += sq((gamma_track - 2.13) / 0.13);
+	// Niederhausen:2015svt
+	chisq += sq((gamma_cascade - 2.62) / 0.07);
+
+	if (m1min) // include a term from Planck
+	{
+		// Get the correct masses set up
+		double m2, m3, summnu;
+		m2 = sqrt(Dmsq21 + sq(dp.m1));
+		m3 = sqrt(Dmsq31 + sq(dp.m1));
+		summnu = dp.m1 + m2 + m3;
+
+		// 1807.06209 PlanckTT,TE,EE+lowE+lensing+BAO
+		// assume that it is linear in summnus and that 95% => 2 sigma and that things are gaussian
+		// then 0.12 at 95% => the standard deviation is 0.06 and the data seems to prefer zero
+		chisq += sq(summnu / 0.06);
+
+		// subtract off the best case scenario (m1 = 0) since we don't want to pay a penalty for the fact that Planck prefers summnus = 0
+		chisq -= sq((sqrt(Dmsq21) + sqrt(Dmsq31)) / 0.06);
+	}
+
+	return chisq;
+}
+
+// m1min: true: minimize over m1 weighted by cosmology, false: use the value of m1 in dp
+double Chisq(decay_params dp, bool visible, bool m1min)
+{
+	chisq_helper_params p = {dp, visible, m1min};
+
+	if (not m1min)
+		return Chisq_helper(dp.m1, &p);
+
+	const gsl_min_fminimizer_type *T;
+	gsl_min_fminimizer *s;
+	gsl_function F;
+	F.function = &Chisq_helper;
+	F.params = &p;
+
+	T = gsl_min_fminimizer_brent;
+	s = gsl_min_fminimizer_alloc(T);
+
+	double chisqmin;
+
+	// Turn off the error handler but print the messages later if there is a convergence problem.
+	// Be sure to check the output for "error"
+	gsl_set_error_handler_off();
+	int status;
+	status = gsl_min_fminimizer_set(s, &F, 1e-4, 0, 1);
+	if (status == 4) // almost certainly means m1=0 is the minimum
+	{
+		chisqmin = gsl_min_fminimizer_f_lower(s);
+		if (visible)	printf("Visible: For gamma = %g and g = %g the minimum is at m1 = %g with chisq = %g\n", dp.gamma, dp.g31, gsl_min_fminimizer_x_lower(s), chisqmin);
+		else			printf("Invisible: For gamma = %g and g = %g the minimum is at m1 = %g with chisq = %g\n", dp.gamma, dp.g31, gsl_min_fminimizer_x_lower(s), chisqmin);
+		gsl_min_fminimizer_free(s);
+		return chisqmin;
+	}
+	printf("Status = %i. Error = %s\n", status, gsl_strerror(status));
+	printf("%g %g %g %g %g %g\n", gsl_min_fminimizer_x_lower(s), gsl_min_fminimizer_x_upper(s), gsl_min_fminimizer_x_minimum(s), gsl_min_fminimizer_f_lower(s), gsl_min_fminimizer_f_upper(s), gsl_min_fminimizer_f_minimum(s));
+
+	// Loop while minimizing
+	double a, b;
+	do
+	{
+		status = gsl_min_fminimizer_iterate(s);
+		a = gsl_min_fminimizer_x_lower(s);
+		b = gsl_min_fminimizer_x_upper(s);
+		status = gsl_min_test_interval(a, b, 1e-3, 0.0);
+	} while (status == GSL_CONTINUE);
+
+	chisqmin = gsl_min_fminimizer_f_minimum(s);
+
+	if (visible)	printf("Visible: For gamma = %g and g = %g the minimum is at m1 = %g with chisq = %g\n", dp.gamma, dp.g31, gsl_min_fminimizer_x_minimum(s), chisqmin);
+	else			printf("Invisible: For gamma = %g and g = %g the minimum is at m1 = %g with chisq = %g\n", dp.gamma, dp.g31, gsl_min_fminimizer_x_minimum(s), chisqmin);
+
+	gsl_min_fminimizer_free(s);
+
+	return chisqmin;
 }
 

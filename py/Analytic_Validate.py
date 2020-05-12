@@ -43,8 +43,13 @@ if m1 == 0:
 	s += r"$m_1=0$"
 else:
 	s += r"$m_1=%g{\rm\ eV}$" % m1
-s += "$,$ "
-s += r"$L=%.2g{\rm\ km}$" % L
+s += "\n"
+#s += "$,$ "
+Lexp = np.floor(np.log10(L))
+Lb = L / 10 ** Lexp
+#Lstr = r"%.2g\times10^{%i}" % (Lb, Lexp)
+Lstr = r"10^{%i}" % Lexp # round to order of magnitude, Lb=1.4 anyway
+s += r"$L=%s{\rm\ km}$" % Lstr
 s += "\n"
 s += r"$\gamma=%g$" % gamma
 s += "$,$ "

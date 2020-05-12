@@ -87,9 +87,8 @@ double GijWij(int i, int j, double Ei, decay_params dp)
 	} // switch dp.nnb
 }
 
-// The integrand (and relevant struct) for the regeneration probability
+// The integrand for the regeneration probability
 // Units are GeV-1
-struct Iij_integrand_params {int i, j; double Ei; decay_params dp;};
 double Iij_integrand(int i, int j, double xp, double Ei, decay_params dp)
 {
 	assert(i == 3 or i == 2);

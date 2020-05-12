@@ -15,7 +15,9 @@ dt = [(d, "f") for d in dts]
 data = np.loadtxt(fname, dtype = dt, skiprows = 1)
 
 print("Max Delta gamma inv =", np.max(data["cascade inv"] - data["track inv"]))
+print("Min Delta gamma inv =", np.min(data["cascade inv"] - data["track inv"]))
 print("Max Delta gamma vis =", np.max(data["cascade vis"] - data["track vis"]))
+print("Min Delta gamma vis =", np.min(data["cascade vis"] - data["track vis"]))
 
 for i in range(1, len(dts)):
 	d = dts[i]
@@ -43,7 +45,7 @@ plt.plot([v[0] - 1], [v[2] - 1], color = "k", ls = "--", label = r"${\rm Invisib
 
 plt.gca().xaxis.set_minor_locator(LogLocator(subs = "all", numticks = 1e5))
 plt.gca().set_yticks(np.arange(v[2], v[3] + 1e-5, 0.50), minor = False)
-plt.gca().set_yticks(np.arange(v[2], v[3] + 1e-5, 0.25), minor = True)
+plt.gca().set_yticks(np.arange(v[2], v[3] + 1e-5, 0.10), minor = True)
 
 plt.xlabel(r"$g^{(\prime)}_{ij}$")
 plt.ylabel(r"$\gamma_f$")

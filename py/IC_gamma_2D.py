@@ -66,9 +66,10 @@ def p(vis):
 	c = plt.contourf(Xs, Ys, Delta_gammas, levels = levels, cmap = plt.get_cmap("Oranges"), vmin = 0, vmax = zmax, zorder = -10)
 	plt.gca().set_rasterization_zorder(-5)
 
-	levels = np.arange(0, zmax + 1e-10, 1e-1)
+	step = 1e-1
+	levels = np.arange(0, zmax + 1e-10, step)
 	levels[0] = -1e-8
-	c2 = plt.contour(Xs, Ys, Delta_gammas, levels = levels, cmap = plt.get_cmap("Oranges"), linewidths = 0.8, vmin = -0.1, vmax = zmax - 0.1)
+	c2 = plt.contour(Xs, Ys, Delta_gammas, levels = levels, cmap = plt.get_cmap("Oranges"), linewidths = 0.8, vmin = -step, vmax = zmax - step)
 	if Delta_gamma_IC < Delta_gammas.max():
 		c3 = plt.contour(Xs, Ys, Delta_gammas, levels = [Delta_gamma_IC], colors = "k", linewidths = 1)
 

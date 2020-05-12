@@ -14,5 +14,6 @@ void IC_gamma();
 void IC_gamma_2D();
 void Visible_SPS();
 void Visible_nnb();
+void Chisq();
 
 #endif

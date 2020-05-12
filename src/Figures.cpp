@@ -550,13 +550,13 @@ void IC_gamma_2D()
 	double Delta_gammas_inv[n + 1][n + 1], Delta_gammas_vis[n + 1][n + 1];
 
 	double m1min, m1max, m1scale;
-	m1min = 1e-4; // 1e-4
-	m1max = 1e0; // 1e0
+	m1min = 1e-4;
+	m1max = 1e0;
 	m1scale = pow(m1max / m1min, 1. / n);
 
 	double g, gmin, gmax, gscale;
-	gmin = 1e-8; // 1e-8
-	gmax = 1e-5; // 1e-5
+	gmin = 1e-8;
+	gmax = 1e-5;
 	gscale = pow(gmax / gmin, 1. / n);
 
 	int count = 0;
@@ -598,6 +598,7 @@ void IC_gamma_2D()
 	fprintf(data_inv, "%g %g\n", dp_bm.gamma, dp_bm.x);
 	fprintf(data_vis, "%g %g\n", dp_bm.gamma, dp_bm.x);
 
+	// Define the dimensions of the grid
 	for (int i = 0; i <= n; i++)
 	{
 		fprintf(data_inv, "%g ", gmin * pow(gscale, i));
@@ -610,17 +611,18 @@ void IC_gamma_2D()
 	{
 		fprintf(data_inv, "%g ", m1min * pow(m1scale, i));
 		fprintf(data_vis, "%g ", m1min * pow(m1scale, i));
-	} // i, n, gamma
+	} // i, n, m1
 	fprintf(data_inv, "\n");
 	fprintf(data_vis, "\n");
 
+	// Fill in the grid
 	for (int i = 0; i <= n; i++)
 	{
 		for (int j = 0; j <= n; j++)
 		{
 			fprintf(data_inv, "%g ", Delta_gammas_inv[i][j]);
 			fprintf(data_vis, "%g ", Delta_gammas_vis[i][j]);
-		} // j, n, gamma
+		} // j, n, m1
 		fprintf(data_inv, "\n");
 		fprintf(data_vis, "\n");
 	} // i, n, g
@@ -740,3 +742,87 @@ void Visible_nnb()
 	fclose(data);
 }
 
+void Chisq()
+{
+	printf("Chisq\n");
+
+	const int n = 1e2;
+	double Chisqs_inv[n + 1][n + 1], Chisqs_vis[n + 1][n + 1];
+
+	double gammamin, gammamax, gammastep;
+	gammamin = 2;
+	gammamax = 3.5;
+	gammastep = (gammamax - gammamin) / n;
+
+	double g, gmin, gmax, gscale;
+	gmin = 1e-9;
+	gmax = 1e-5;
+	gscale = pow(gmax / gmin, 1. / n);
+
+	bool m1min = false;
+
+	int count = 0;
+	# pragma omp parallel for collapse(2) schedule(dynamic)
+	for (int i = 0; i <= n; i++)
+	{
+		for (int j = 0; j <= n; j++)
+		{
+			if(count % 5 == 0) printf("%.2g\n", 1.0 * count / ((n + 1) * (n + 1)));
+
+			decay_params dp = dp_bm;
+
+			g = gmin * pow(gscale, i);
+			dp.g21 = g;
+			dp.gp21 = g;
+			dp.g31 = g;
+			dp.gp31 = g;
+			dp.g32 = g;
+			dp.gp32 = g;
+
+			dp.gamma = gammamin + j * gammastep;
+
+			// Invisible
+			Chisqs_inv[i][j] = Chisq(dp, false, m1min);
+			// Visible
+			Chisqs_vis[i][j] = Chisq(dp, true, m1min);
+
+			count++;
+		} // j, n, gamma
+	} // i, n, g
+
+	// Write to files
+	FILE *data_inv = fopen("data/Chisq_inv.txt", "w");
+	FILE *data_vis = fopen("data/Chisq_vis.txt", "w");
+
+	fprintf(data_inv, "%g\n", dp_bm.x);
+	fprintf(data_vis, "%g\n", dp_bm.x);
+
+	for (int i = 0; i <= n; i++)
+	{
+		fprintf(data_inv, "%g ", gmin * pow(gscale, i));
+		fprintf(data_vis, "%g ", gmin * pow(gscale, i));
+	} // i, n, g
+	fprintf(data_inv, "\n");
+	fprintf(data_vis, "\n");
+
+	for (int i = 0; i <= n; i++)
+	{
+		fprintf(data_inv, "%g ", gammamin + i * gammastep);
+		fprintf(data_vis, "%g ", gammamin + i * gammastep);
+	} // i, n, gamma
+	fprintf(data_inv, "\n");
+	fprintf(data_vis, "\n");
+
+	for (int i = 0; i <= n; i++)
+	{
+		for (int j = 0; j <= n; j++)
+		{
+			fprintf(data_inv, "%g ", Chisqs_inv[i][j]);
+			fprintf(data_vis, "%g ", Chisqs_vis[i][j]);
+		} // j, n, gamma
+		fprintf(data_inv, "\n");
+		fprintf(data_vis, "\n");
+	} // i, n, g
+	fclose(data_inv);
+	fclose(data_vis);
+}
