@@ -2,7 +2,7 @@
 
 | arXiv | Zenodo DOI |
 |:-----:|:---:|
-|[![arXiv](https://img.shields.io/badge/arXiv-2005.xxxxx-orange.svg)](https://arXiv.org/abs/2005.xxxxx)|[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.3826887.svg)](https://doi.org/10.5281/zenodo.3826887)|
+|[![arXiv](https://img.shields.io/badge/arXiv-2005.07200-orange.svg)](https://arXiv.org/abs/2005.07200)|[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.3826887.svg)](https://doi.org/10.5281/zenodo.3826887)|
 
 This code allows for the calculation of neutrino flavor changing probabilities in the presence of invisible or visible neutrino decay over cosmological distances. Every figure in the paper can be made via the functions in [src/Figures.cpp](src/Figures.cpp). To run one of them uncomment the relevant line in [src/main.cpp](src/main.cpp), compile, and execute `./main`.
 
@@ -25,5 +25,5 @@ This depends on gsl which can be found in libgsl-dev on ubuntu. This code also u
 If any bugs are identified or any features suggested, please use the tools (issues, pull requests, etc.) on github.
 
 ## Reference
-If you use this code please reference **[arXiv:2005.xxxxx](https://arxiv.org/abs/2005.xxxxx)** and **[doi:10.5281/zenodo.3826887](https://doi.org/10.5281/zenodo.3826887)**.
+If you use this code please reference **[arXiv:2005.07200](https://arxiv.org/abs/2005.07200)** and **[doi:10.5281/zenodo.3826887](https://doi.org/10.5281/zenodo.3826887)**.
 
